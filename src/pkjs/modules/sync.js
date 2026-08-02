@@ -10,9 +10,10 @@ var ClayHelper = require('./clay');
 // localStorage key holding the hash of the last remote document that was applied
 var REVISION_KEY = 'sync-revision';
 
-// Fields that are owned by the local device and are never taken from a remote document. Without
-// this a bad remote document could repoint or disable sync, leaving no way to recover from the server.
-var LOCAL_ONLY_KEYS = ['sync_enabled', 'sync_url', 'sync_headers'];
+// localStorage key holding the device owned sync configuration. Kept out of the tiles object so that
+// neither a remote document nor a pasted JSON import can repoint or disable sync, leaving no way to
+// recover from the server. Custom icons are stored separately for the same reason.
+var SETTINGS_KEY = 'sync-settings';
 
 // The C side reads a fixed number of texts and icon_keys per tile (char *texts[7] in modules/data.h),
 // while packTiles() packs however many the JSON happens to contain. A mismatch desynchronises the
@@ -32,40 +33,61 @@ function isStringArray(value, length) {
 
 var self = module.exports = {
 
-  //! Reads the locally stored tiles object, or null if it is absent / unparseable
-  localTiles: function() {
-    try {
-      var tiles = JSON.parse(localStorage.getItem('tiles'));
-      return (tiles && typeof(tiles) === 'object') ? tiles : null;
-    } catch(e) {
-      return null;
-    }
-  },
-
-  //! Returns the remote sync configuration, applying defaults for configs written by older versions
+  //! Returns the remote sync configuration. Held in its own localStorage key rather than inside the
+  //! tiles object, following the same pattern as custom icons: this state belongs to the device, not to
+  //! the config document, so no remote document or pasted JSON import can reach it.
   settings: function() {
-    var tiles = self.localTiles() || {};
+    var stored;
+    try {
+      stored = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    } catch(e) {
+      stored = null;
+    }
+    if (!stored || typeof(stored) !== 'object') { stored = {}; }
     return {
-      enabled: (typeof(tiles.sync_enabled) !== 'undefined') ? !!tiles.sync_enabled : false,
-      url: (typeof(tiles.sync_url) === 'string') ? tiles.sync_url : "",
-      headers: (typeof(tiles.sync_headers) === 'object' && tiles.sync_headers !== null) ? tiles.sync_headers : {}
+      enabled: (typeof(stored.sync_enabled) !== 'undefined') ? !!stored.sync_enabled : false,
+      url: (typeof(stored.sync_url) === 'string') ? stored.sync_url : "",
+      headers: (typeof(stored.sync_headers) === 'object' && stored.sync_headers !== null) ? stored.sync_headers : {}
     };
   },
 
-  //! Persists just the remote sync fields into the stored tiles object. Used by the "Sync Now" button so
-  //! that pressing it saves the endpoint without pushing a full config refresh up to the watch.
+  //! Same values as settings(), keyed as they are persisted. This is the shape the Clay page binds its
+  //! Remote Config fields to and hands back on submit, so it round trips without translation.
+  storedSettings: function() {
+    var current = self.settings();
+    return {
+      sync_enabled: current.enabled,
+      sync_url: current.url,
+      sync_headers: current.headers
+    };
+  },
+
+  //! True if the given settings differ from what is stored. There is no longer a dedicated sync button,
+  //! so the main Submit is the only place a user can point the app at a new endpoint. Pulling on every
+  //! Submit would reopen the settings page each time, so it only happens when the endpoint actually moved.
+  //! @param settings object in the persisted shape, as handed back by the Clay page
+  settingsChanged: function(settings) {
+    if (!settings || typeof(settings) !== 'object') { return false; }
+    var current = self.settings();
+    if (!!settings.sync_enabled !== current.enabled) { return true; }
+    if (typeof(settings.sync_url) === 'string' && settings.sync_url !== current.url) { return true; }
+    if (isObject(settings.sync_headers) &&
+        JSON.stringify(settings.sync_headers) !== JSON.stringify(current.headers)) { return true; }
+    return false;
+  },
+
+  //! Persists the remote sync fields. Used by both submit buttons so that pressing either one saves the
+  //! endpoint without pushing a full config refresh up to the watch.
   //! @param settings object containing any of sync_enabled, sync_url, sync_headers
   saveSettings: function(settings) {
-    var tiles = self.localTiles();
-    if (tiles === null) {
-      tiles = JSON.parse(JSON.stringify(require('../data/base_object')));
-    }
-    LOCAL_ONLY_KEYS.forEach(function(key) {
-      if (typeof(settings[key]) !== 'undefined') {
-        tiles[key] = settings[key];
-      }
-    });
-    localStorage.setItem('tiles', JSON.stringify(tiles));
+    if (!settings || typeof(settings) !== 'object') { return; }
+    var current = self.settings();
+    var stored = {
+      sync_enabled: (typeof(settings.sync_enabled) !== 'undefined') ? !!settings.sync_enabled : current.enabled,
+      sync_url: (typeof(settings.sync_url) === 'string') ? settings.sync_url : current.url,
+      sync_headers: (isObject(settings.sync_headers)) ? settings.sync_headers : current.headers
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
   },
 
   //! Validates a single button. clayToTiles() dereferences button.status unconditionally for the
@@ -163,7 +185,7 @@ var self = module.exports = {
   normalize: function(doc) {
     var base = JSON.parse(JSON.stringify(require('../data/base_object')));
     for (var key in base) {
-      if (key === 'tiles' || LOCAL_ONLY_KEYS.indexOf(key) !== -1) { continue; }
+      if (key === 'tiles') { continue; }
       if (typeof(doc[key]) === 'undefined') { doc[key] = base[key]; }
     }
     return doc;
@@ -240,16 +262,6 @@ var self = module.exports = {
     }
 
     self.normalize(doc);
-
-    // Carry the device owned sync settings over so the remote document cannot repoint or disable sync
-    var local = self.localTiles() || {};
-    LOCAL_ONLY_KEYS.forEach(function(key) {
-      if (typeof(local[key]) !== 'undefined') {
-        doc[key] = local[key];
-      } else {
-        delete doc[key];
-      }
-    });
 
     // clayToTiles() falls back to resetTiles() when it dislikes the object, which would wipe the
     // config rather than leave the last good one in place. validate() above is what prevents that.

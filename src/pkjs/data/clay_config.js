@@ -66,11 +66,40 @@ module.exports =
         }
       },
       {
+        "type": "toggle",
+        "label": "Enable Remote Config",
+        "id": "SyncToggle",
+      },
+      {
+        "type": "input",
+        "id": "SyncURL",
+        "label": "JSON Config URL",
+        "attributes": {
+          "autocapitalize": "off",
+          "autocorrect": "off",
+          "autocomplete": "off",
+          "type": "url",
+          "spellcheck": "false"
+        }
+      },
+      {
+        "type": "textarea",
+        "id": "SyncHeaders",
+        "label": "Config Headers",
+        "defaultValue": "{}",
+        "attributes": {
+          "autocapitalize": "off",
+          "autocorrect": "off",
+          "autocomplete": "off",
+          "spellcheck": "false"
+        }
+      },
+      {
         "type": "button",
         "id": "JSONSubmit",
         "defaultValue": "Import",
         "primary": true,
-      },
+      }
     ]
   },
   {
@@ -126,51 +155,6 @@ module.exports =
         "defaultValue": "Submit",
         "primary": true,
         "capabilities": ["NOT_PLATFORM_APLITE"]
-      },
-    ]
-  },
-  {
-    "type": "section",
-    "items": [
-      {
-        "type": "heading2",
-        "defaultValue": "Remote Config",
-        "id": "SyncHeading"
-      },
-      {
-        "type": "toggle",
-        "label": "Enable Remote Config",
-        "id": "SyncToggle",
-      },
-      {
-        "type": "input",
-        "id": "SyncURL",
-        "label": "Config URL",
-        "attributes": {
-          "autocapitalize": "off",
-          "autocorrect": "off",
-          "autocomplete": "off",
-          "type": "url",
-          "spellcheck": "false"
-        }
-      },
-      {
-        "type": "textarea",
-        "id": "SyncHeaders",
-        "label": "Config Headers",
-        "defaultValue": "{}",
-        "attributes": {
-          "autocapitalize": "off",
-          "autocorrect": "off",
-          "autocomplete": "off",
-          "spellcheck": "false"
-        }
-      },
-      {
-        "type": "button",
-        "id": "SyncSubmit",
-        "defaultValue": "Sync Now",
-        "primary": true,
       },
     ]
   },

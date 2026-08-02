@@ -87,6 +87,5 @@ var self = module.exports = {
     "ICON_REMOVE": 3,
     "TILE_ADD": 4,
     "TILE_REMOVE": 5,
-    "SYNC": 6
   }
 };

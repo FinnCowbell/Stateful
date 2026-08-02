@@ -125,7 +125,9 @@ var self = module.exports = {
         }
       });
     }
-    claySettings['ClayJSON'] = LZString.compressToEncodedURIComponent(JSON.stringify([tiles, icon.getClay(), debugLog]));
+    // Required lazily: sync.js requires this module at load time, so a top level require would cycle.
+    var syncSettings = require('./sync').storedSettings();
+    claySettings['ClayJSON'] = LZString.compressToEncodedURIComponent(JSON.stringify([tiles, icon.getClay(), debugLog, syncSettings]));
     claySettings['ClayAction'] = (typeof(clayAction) !== 'undefined' && clayAction !== null) ? clayAction : 0;
     localStorage.setItem('clay-param-action', claySettings['ClayAction']);
     if (typeof(message) !== 'undefined' && message !== null) {

@@ -223,15 +223,19 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   //! @param items - Array of Unique IDs, defining each item to be included in the section (Defined in clay_config.js)
   //! @param tileEntries - Array of string values identifying sub-items in the tiles JSON to assosiate with the list of `items`
   //! @param tiles - JSON object to be used with the tileEntries strings
-  function Section(headingItem, items, tileEntries, tiles) {
+  //! @param itemTiles - Optional array, parallel to `items`, of per-item JSON objects overriding `tiles`.
+  //!                    A section is a visual grouping, so it can contain fields backed by different
+  //!                    objects: the JSON Manager binds its textarea to a throwaway copy of the config
+  //!                    while the Remote Config fields sitting alongside it must write to the live one.
+  function Section(headingItem, items, tileEntries, tiles, itemTiles) {
     var self = this;
     this.headingItem = clayConfig.getItemById(headingItem);
     this.tiles = tiles;
 
     if (items.length !== tileEntries.length) { throw new Error('items and tileEntries array lengths must match');}
     var protoItems = items.map(function(elm, i) {return [elm,tileEntries[i]];});
-    this.items = protoItems.map(function(item) {
-      return new Item(item[0], item[1], self.tiles);
+    this.items = protoItems.map(function(item, i) {
+      return new Item(item[0], item[1], (itemTiles && itemTiles[i]) ? itemTiles[i] : self.tiles);
     });
 
 
@@ -308,7 +312,6 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   // Clay field definitions
   var submitButton = clayConfig.getItemById('ClaySubmit');
   var jsonButton = clayConfig.getItemById('JSONSubmit');
-  var syncButton = clayConfig.getItemById('SyncSubmit');
   var iconButton = clayConfig.getItemById('IconSubmit');
   var clayJSON = clayConfig.getItemById('ClayJSON');
   var clayAction = clayConfig.getItemById('ClayAction');
@@ -328,6 +331,9 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   var defaultIcons = payload[1][0];
   var customIcons = payload[1][1];
   var debugLog = (payload[2]) ? payload[2] : [];
+  // Remote Config settings are device owned and live outside the tiles object, so they travel as their
+  // own element rather than as fields within it.
+  var syncSettings = (payload[3] && typeof(payload[3]) === 'object') ? payload[3] : {sync_enabled: false, sync_url: "", sync_headers: {}};
   var icons = (isAplite) ? defaultIcons : defaultIcons.concat(customIcons);
 
   // Establish platform and defaults
@@ -348,9 +354,6 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   debugInputText.set(debugLog.join('\n'));
   tiles.debug_logging = (typeof(tiles.debug_logging) !== 'undefined') ? tiles.debug_logging : false;
   tiles.tile_globals = (typeof(tiles.tile_globals) !== 'undefined') ? tiles.tile_globals : false;
-  tiles.sync_enabled = (typeof(tiles.sync_enabled) !== 'undefined') ? tiles.sync_enabled : false;
-  tiles.sync_url = (typeof(tiles.sync_url) !== 'undefined') ? tiles.sync_url : "";
-  tiles.sync_headers = (typeof(tiles.sync_headers) === 'object' && tiles.sync_headers !== null) ? tiles.sync_headers : {};
   for (var i in tiles.tiles) {
     var tile = tiles.tiles[i];
     if (typeof(tile.base_url) == 'undefined') {tile.base_url = "";}
@@ -392,16 +395,22 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   var debugSection = new Section(['DebugHeading'], ['DebugToggle', 'DebugInput'], ["debug_logging", null], tiles);
 
 
-  var JSONSection = new Section(['JSONHeading'], ['JSONInput', 'JSONSubmit'], ['.', null], importTiles);
+  // The Remote Config fields live inside the JSON Manager section: both govern where the config comes
+  // from, so they belong together visually. They are backed by different objects though. The JSON
+  // textarea edits a throwaway copy of the config (importTiles) so in-progress edits made elsewhere in
+  // the page are not swept up by Import, while the Remote Config fields edit the device owned settings
+  // object, which is not part of the config document at all. Hence the per-item backing override.
+  var JSONSection = new Section(['JSONHeading'],
+                                ['JSONInput', 'JSONSubmit', 'SyncToggle', 'SyncURL', 'SyncHeaders'],
+                                ['.', null, "sync_enabled", "sync_url", "sync_headers"],
+                                importTiles,
+                                [null, null, syncSettings, syncSettings, syncSettings]);
 
   var iconSection = (isAplite) ? null : new Section(['IconHeading'], ['IconIndex', 'IconURL', 'IconName', 'IconSubmit'],
                                 [null, null, null, null], tiles);
 
   var globalSection = new Section(['GlobalHeading'], ['GlobalIndex', 'GlobalToggle','GlobalTileToggle', 'GlobalURL', 'GlobalHeaders'],
                                   ["default_idx", "open_default", "tile_globals", "base_url",  "headers"], tiles);
-
-  var syncSection = new Section(['SyncHeading'], ['SyncToggle', 'SyncURL', 'SyncHeaders', 'SyncSubmit'],
-                                ["sync_enabled", "sync_url", "sync_headers", null], tiles);
   
   var tileSection = (isBlackWhite) ? new Section(['TileHeading'], ['TileIndex', 'TileName', 'TileURL', 'TileHeaders', 'TileIcon'],
                                 [null, "tiles[0].payload.texts[6]", "tiles[0].base_url", "tiles[0].headers", "tiles[0].payload.icon_keys[6]"], tiles) : 
@@ -454,19 +463,16 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   onGlobalTileToggleChange();
 
   // Setup Remote Config callback based on sync_enabled JSON flag, the endpoint fields serve no purpose while disabled
-  var syncToggle = syncSection.find("SyncToggle");
-  var syncURL = syncSection.find("SyncURL");
-  var syncHeaders = syncSection.find("SyncHeaders");
-  var syncSubmit = syncSection.find("SyncSubmit");
+  var syncToggle = JSONSection.find("SyncToggle");
+  var syncURL = JSONSection.find("SyncURL");
+  var syncHeaders = JSONSection.find("SyncHeaders");
   var onSyncToggleChange = function() {
-    if (!syncSection.visible) {
-      syncURL.visible = tiles.sync_enabled;
-      syncHeaders.visible = tiles.sync_enabled;
-      syncSubmit.visible = tiles.sync_enabled;
+    if (!JSONSection.visible) {
+      syncURL.visible = syncSettings.sync_enabled;
+      syncHeaders.visible = syncSettings.sync_enabled;
     } else {
-      syncURL.setVisibility(tiles.sync_enabled);
-      syncHeaders.setVisibility(tiles.sync_enabled);
-      syncSubmit.setVisibility(tiles.sync_enabled);
+      syncURL.setVisibility(syncSettings.sync_enabled);
+      syncHeaders.setVisibility(syncSettings.sync_enabled);
     }
     syncHeaders.clay.trigger('input');
   };
@@ -478,10 +484,6 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
     JSONSection.setVisibility(false,false);
   } else {
     JSONSection.find("JSONInput").clay.$manipulatorTarget[0].focus();
-  }
-
-  if (clayAction.get() != 6) {
-    syncSection.setVisibility(false, false);
   }
 
   if(!isAplite) {
@@ -689,18 +691,13 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   // Submission buttons logic
 
   submitButton.on('click', function () {
-    if (validationEnabled && !validateSections([globalSection, syncSection, tileSection, buttonSection, buttonActionSection, buttonStatusSection])) {return;}
-    submitWithData({"action": "Submit", "payload": tiles});
+    if (validationEnabled && !validateSections([globalSection, JSONSection, tileSection, buttonSection, buttonActionSection, buttonStatusSection])) {return;}
+    submitWithData({"action": "Submit", "payload": tiles, "sync": syncSettings});
   });
 
   jsonButton.on('click', function () {
     if (validationEnabled && !validateSections([JSONSection])) {return;}
-    submitWithData({"action": "Submit", "payload": JSONSection.find("JSONInput").tiles});
-  });
-
-  syncButton.on('click', function () {
-    if (validationEnabled && !validateSections([syncSection])) {return;}
-    submitWithData({"action": "SyncNow", "payload": tiles});
+    submitWithData({"action": "Submit", "payload": JSONSection.find("JSONInput").tiles, "sync": syncSettings});
   });
 
   if (!isAplite) {
