@@ -25,6 +25,30 @@
   - Applying a synced config sends `TransferType.REFRESH`, which closes the watchapp. `comm_bluetooth_event()` in `modules/comm.c` calls `window_stack_pop_all(true)` before `loading_window_push(NULL)`, and emptying the window stack terminates the app. Pre-existing, but only visible now that a config can be applied while the app is open. Needs the loading window pushed before the others are removed, and an emulator to verify.
   - Needs a wiki page covering the config document shape in full
 
+## New hardware support (Core Devices)
+- ~~Add Pebble Time 2 (`emery`) support~~ `Added emery to targetPlatforms in package.json. Builds clean and runs; no layout changes were needed.`
+  - Findings from doing it:
+    - The layout code was already resolution independent. `action_window.c`, `menu_window.c` and `loading_window.c`
+      derive everything from `layer_get_bounds()`, so nothing was hardcoded to 144x168 the way these notes assumed.
+    - Platform gating is all `PBL_COLOR` / `PBL_APLITE`, never platform names, so emery picked up the colour and
+      large-buffer paths on its own. `ICON_ARRAY_SIZE`/`MAX_TILES` (`stateful.h`), `INBOX_SIZE` (`comm.h`) and
+      `getPlatformLimits()` (`globals.js`) all key off aplite only and needed no change. emery has 128KB app RAM,
+      double basalt.
+    - `apng.c` gates the animated spinner on `PBL_COLOR`, so emery gets the animated path.
+  - Still open on emery:
+    - `CELL_HEIGHT` (48) and `CELL_WIDTH` (40) in `menu_window.c` are fixed pixel values, as is the 18px
+      `FONT_UBUNTU_BOLD_18`. On a 228px tall display that fits ~4.75 rows instead of ~3.5, so the menu is denser
+      and physically smaller rather than broken. Scale these per platform if it reads too small on real hardware.
+    - Icons are fixed at `ICON_SIZE_PX: 18` in `pkjs/modules/globals.js`. Higher-res variants under
+      `resources/icons` would sharpen them on emery.
+    - Add an appstore screenshot set under `resources/appstore/` for emery.
+- Pebble 2 Duo (`flint`) is blocked, not done
+  - `flint` is 144x168 monochrome, dimensionally identical to the already-supported `diorite`, so the app itself
+    needs nothing. The blocker is the dependency: `pebble-clay` ships `aplite, basalt, chalk, diorite, emery` and
+    building with flint in `targetPlatforms` fails outright with
+    "The Pebble package pebble-clay does not support the flint platform".
+  - Unblocking it means adding flint to the clay fork (`kennedn/clay`) and pointing `package.json` at it.
+
 ## General
 - Commit clay, make sure project compiles in clean repo
 - Use minified clay_function when releasing
