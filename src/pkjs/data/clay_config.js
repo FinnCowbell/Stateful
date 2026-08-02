@@ -134,6 +134,51 @@ module.exports =
     "items": [
       {
         "type": "heading2",
+        "defaultValue": "Remote Config",
+        "id": "SyncHeading"
+      },
+      {
+        "type": "toggle",
+        "label": "Enable Remote Config",
+        "id": "SyncToggle",
+      },
+      {
+        "type": "input",
+        "id": "SyncURL",
+        "label": "Config URL",
+        "attributes": {
+          "autocapitalize": "off",
+          "autocorrect": "off",
+          "autocomplete": "off",
+          "type": "url",
+          "spellcheck": "false"
+        }
+      },
+      {
+        "type": "textarea",
+        "id": "SyncHeaders",
+        "label": "Config Headers",
+        "defaultValue": "{}",
+        "attributes": {
+          "autocapitalize": "off",
+          "autocorrect": "off",
+          "autocomplete": "off",
+          "spellcheck": "false"
+        }
+      },
+      {
+        "type": "button",
+        "id": "SyncSubmit",
+        "defaultValue": "Sync Now",
+        "primary": true,
+      },
+    ]
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading2",
         "defaultValue": "Global",
         "id": "GlobalHeading"
       },

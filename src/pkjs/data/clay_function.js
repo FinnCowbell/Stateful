@@ -308,6 +308,7 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   // Clay field definitions
   var submitButton = clayConfig.getItemById('ClaySubmit');
   var jsonButton = clayConfig.getItemById('JSONSubmit');
+  var syncButton = clayConfig.getItemById('SyncSubmit');
   var iconButton = clayConfig.getItemById('IconSubmit');
   var clayJSON = clayConfig.getItemById('ClayJSON');
   var clayAction = clayConfig.getItemById('ClayAction');
@@ -347,6 +348,9 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   debugInputText.set(debugLog.join('\n'));
   tiles.debug_logging = (typeof(tiles.debug_logging) !== 'undefined') ? tiles.debug_logging : false;
   tiles.tile_globals = (typeof(tiles.tile_globals) !== 'undefined') ? tiles.tile_globals : false;
+  tiles.sync_enabled = (typeof(tiles.sync_enabled) !== 'undefined') ? tiles.sync_enabled : false;
+  tiles.sync_url = (typeof(tiles.sync_url) !== 'undefined') ? tiles.sync_url : "";
+  tiles.sync_headers = (typeof(tiles.sync_headers) === 'object' && tiles.sync_headers !== null) ? tiles.sync_headers : {};
   for (var i in tiles.tiles) {
     var tile = tiles.tiles[i];
     if (typeof(tile.base_url) == 'undefined') {tile.base_url = "";}
@@ -395,6 +399,9 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
 
   var globalSection = new Section(['GlobalHeading'], ['GlobalIndex', 'GlobalToggle','GlobalTileToggle', 'GlobalURL', 'GlobalHeaders'],
                                   ["default_idx", "open_default", "tile_globals", "base_url",  "headers"], tiles);
+
+  var syncSection = new Section(['SyncHeading'], ['SyncToggle', 'SyncURL', 'SyncHeaders', 'SyncSubmit'],
+                                ["sync_enabled", "sync_url", "sync_headers", null], tiles);
   
   var tileSection = (isBlackWhite) ? new Section(['TileHeading'], ['TileIndex', 'TileName', 'TileURL', 'TileHeaders', 'TileIcon'],
                                 [null, "tiles[0].payload.texts[6]", "tiles[0].base_url", "tiles[0].headers", "tiles[0].payload.icon_keys[6]"], tiles) : 
@@ -446,11 +453,35 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   globalTileToggle.clay.on('change', onGlobalTileToggleChange);
   onGlobalTileToggleChange();
 
+  // Setup Remote Config callback based on sync_enabled JSON flag, the endpoint fields serve no purpose while disabled
+  var syncToggle = syncSection.find("SyncToggle");
+  var syncURL = syncSection.find("SyncURL");
+  var syncHeaders = syncSection.find("SyncHeaders");
+  var syncSubmit = syncSection.find("SyncSubmit");
+  var onSyncToggleChange = function() {
+    if (!syncSection.visible) {
+      syncURL.visible = tiles.sync_enabled;
+      syncHeaders.visible = tiles.sync_enabled;
+      syncSubmit.visible = tiles.sync_enabled;
+    } else {
+      syncURL.setVisibility(tiles.sync_enabled);
+      syncHeaders.setVisibility(tiles.sync_enabled);
+      syncSubmit.setVisibility(tiles.sync_enabled);
+    }
+    syncHeaders.clay.trigger('input');
+  };
+  syncToggle.clay.on('change', onSyncToggleChange);
+  onSyncToggleChange();
+
   // Based on returned clay action (last user action), collapse relevant sections so that a desired section is in focus
   if (clayAction.get() != 1) {
     JSONSection.setVisibility(false,false);
   } else {
     JSONSection.find("JSONInput").clay.$manipulatorTarget[0].focus();
+  }
+
+  if (clayAction.get() != 6) {
+    syncSection.setVisibility(false, false);
   }
 
   if(!isAplite) {
@@ -658,13 +689,18 @@ clayConfig.on(clayConfig.EVENTS.AFTER_BUILD, function() {
   // Submission buttons logic
 
   submitButton.on('click', function () {
-    if (validationEnabled && !validateSections([globalSection, tileSection, buttonSection, buttonActionSection, buttonStatusSection])) {return;}
+    if (validationEnabled && !validateSections([globalSection, syncSection, tileSection, buttonSection, buttonActionSection, buttonStatusSection])) {return;}
     submitWithData({"action": "Submit", "payload": tiles});
   });
 
   jsonButton.on('click', function () {
     if (validationEnabled && !validateSections([JSONSection])) {return;}
     submitWithData({"action": "Submit", "payload": JSONSection.find("JSONInput").tiles});
+  });
+
+  syncButton.on('click', function () {
+    if (validationEnabled && !validateSections([syncSection])) {return;}
+    submitWithData({"action": "SyncNow", "payload": tiles});
   });
 
   if (!isAplite) {

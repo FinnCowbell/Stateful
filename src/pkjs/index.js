@@ -15,6 +15,7 @@ var clayConfig = require('./data/clay_config');
 var clay = new Clay(clayConfig, customClay, {autoHandleEvents: false});
 var image = require('./modules/image');
 var icon = require('./modules/icon');
+var Sync = require('./modules/sync');
 
 
 // Called when incoming message from the Pebble is received
@@ -114,7 +115,10 @@ Pebble.addEventListener("appmessage", function(e) {
 
 Pebble.addEventListener('ready', function() {
   console.log("And we're back");
+  // Send READY first so the watch can come up on its cached config immediately, then pull in the
+  // background. If the remote config has changed the pull issues its own REFRESH / READY pair.
   Pebble.sendAppMessage({"TransferType": TransferType.READY,}, messageSuccess, messageFailure);
+  Sync.pull(false);
 });
 
 
@@ -140,10 +144,12 @@ Pebble.addEventListener('webviewclosed', function(e) {
 
   switch(response.action) {
     case "AddTile":
+      Sync.clearRevision();
       var message = ClayHelper.addTile(tiles);
       ClayHelper.openURL(clay, message, ClayAction.TILE_ADD);
       break;
     case "RemoveTile":
+      Sync.clearRevision();
       ClayHelper.removeTile(tiles, response.param);
       ClayHelper.openURL(clay, "Tile removed", ClayAction.TILE_REMOVE);
       break;
@@ -159,8 +165,17 @@ Pebble.addEventListener('webviewclosed', function(e) {
       });
       break;
     case "Submit":
+      // Local edits make the stored revision meaningless, drop it so the next pull re-applies the
+      // server copy rather than deciding it is already up to date.
+      Sync.clearRevision();
       ClayHelper.clayToTiles(tiles, function() {
         ClayHelper.openURL(clay, "Failed to parse JSON", ClayAction.JSON_SUBMIT);
+      });
+      break;
+    case "SyncNow":
+      Sync.saveSettings(tiles);
+      Sync.pull(true, function(applied, message) {
+        ClayHelper.openURL(clay, message, ClayAction.SYNC);
       });
       break;
   }
