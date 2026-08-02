@@ -7,6 +7,23 @@
 `Converting to RGB did not save size over all, re-opted to use webp with a fallback to github urls`
 - ~~Create black spinner icon and tie into `text_color_legible_over()`~~
 
+## Remote config sync
+- ~~Sync config to/from a server so it can be updated without opening the app~~
+`Implemented as pull-only in modules/sync.js - config is fetched on JS 'ready' and via a Sync Now button in the Remote Config section of clay. Server is source of truth, a local Submit drops the stored revision so the next pull re-applies.`
+  - ~~Add a "config URL" (+ optional auth headers) to the global settings section of `data/clay_config.js`, stored alongside the other globals in `data/base_object.js`~~ `Own "Remote Config" section, fields sync_enabled / sync_url / sync_headers`
+  - ~~Fetch on `Pebble.addEventListener('ready')`, reusing `modules/xhr.js:xhrRequest()` rather than a new HTTP path~~ `READY is sent to the watch first so startup is not blocked, the pull issues its own REFRESH / READY if the config actually changed`
+  - ~~Needs a conflict/precedence rule~~ `Pull-only, server wins. Pull is skipped while TRANSFER_LOCK is set so it cannot clobber an open config page.`
+  - ~~Version the remote doc so we can skip the expensive `TransferType.REFRESH` + full re-pack of tiles when nothing changed~~ `sha1 of the fetched doc stored under the sync-revision localStorage key`
+  - ~~Validate hard before writing to `localStorage`~~ `sync.validate() rejects non-objects, empty tile arrays and malformed tiles so a login page returning 200 cannot wipe the config`
+  - ~~Stop a remote doc from repointing or disabling sync~~ `sync_* fields are local-only and are carried over the fetched doc`
+- Outstanding on this feature:
+  - Push (two-way) sync - needs a defined server API contract (PUT semantics, auth, conflict resolution) before it is worth building
+  - Custom icons still do not sync. They live under the `custom-icons` localStorage key (`modules/icon.js`, `modules/image.js`) as encoded image data. Either sync them too or have the remote config reference icon URLs and let `image.load()` re-fetch them.
+  - A watch initiated `TransferType.REFRESH` calls `localStorage.clear()` in `index.js`, which wipes the sync endpoint along with everything else, leaving no way to recover the config from the server. Consider preserving the `sync_*` fields across a refresh.
+  - `ClayHelper.openURL()` does not set `TRANSFER_LOCK`, so the lock only covers config pages opened via `showConfiguration`. Harmless today (pulls only fire on `ready`) but worth tightening if more sync triggers are added.
+  - No periodic / push-triggered refresh - config only updates on watchapp launch or a manual Sync Now
+  - Documented in the README, still needs a wiki page covering the config document shape in full
+
 ## General
 - Commit clay, make sure project compiles in clean repo
 - Use minified clay_function when releasing
