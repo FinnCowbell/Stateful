@@ -5,6 +5,17 @@ for (var key in globals) {
 }
 
 var self = module.exports = {
+  //! A request body is meaningless on GET/HEAD, and iOS's PebbleKit JS XHR rejects one outright,
+  //! failing the request instantly rather than timing out. Every button in a normal config uses
+  //! POST or PUT, so this only shows up on the GET issued by remote config sync.
+  sendBody: function(request, method, data) {
+    var verb = String(method).toUpperCase();
+    if (verb === 'GET' || verb === 'HEAD') {
+      return request.send();
+    }
+    return request.send(JSON.stringify(data));
+  },
+
   objectByString: function(object, str) {
     str = str.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
     str = str.replace(/^\./, '');           // strip a leading dot
@@ -130,7 +141,7 @@ var self = module.exports = {
           request.setRequestHeader(key, headers[key]);
           }
         }
-        request.send(JSON.stringify(data)); 
+        self.sendBody(request, method, data);
       };
       xhrRetry(method, url, headers, data, origin_hash, maxRetries);
     });
@@ -204,7 +215,7 @@ var self = module.exports = {
           request.setRequestHeader(key, headers[key]);
           }
         }
-        request.send(JSON.stringify(data));  
+        self.sendBody(request, method, data);
       };
       xhrRetry(method, url, headers, data, origin_hash, variable, good, bad, maxRetries);
     });
