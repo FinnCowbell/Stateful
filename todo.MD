@@ -7,6 +7,16 @@
 `Converting to RGB did not save size over all, re-opted to use webp with a fallback to github urls`
 - ~~Create black spinner icon and tie into `text_color_legible_over()`~~
 
+## New hardware support (Core Devices)
+- Add support for Pebble 2 Duo (`flint`) and Pebble Time 2 (`emery`)
+  - Add `flint` and `emery` to `targetPlatforms` in `package.json`, build against the Core Devices SDK
+  - `flint` is 144x168 monochrome (diorite-like): confirm it takes the `PBL_BW` / non-`PBL_COLOR` paths in `text_color_legible_over_bg()` and `action_window_set_color()`
+  - `emery` is 200x228 colour: layouts in `action_window.c`, `menu_window.c` and `loading_window.c` are currently sized for 144x168 / 180x180, need to scale rather than hardcode
+  - Icons are fixed at `ICON_SIZE_PX: 18` in `pkjs/modules/globals.js` and re-encoded in `image.js` - decide whether emery gets a larger icon size, and whether `resources/icons` needs higher-res variants
+  - Revisit the aplite-driven memory limits in `stateful.h` (`ICON_ARRAY_SIZE`, `MAX_TILES`) and `comm.h` (`INBOX_SIZE`) - both new platforms have more RAM than aplite, `getPlatformLimits()` in `globals.js` must be kept in sync with the C side
+  - `apng.c` stubs out the animated spinner on aplite only, check the new platforms take the animated path
+  - Add appstore screenshot sets under `resources/appstore/` for the new platforms
+
 ## General
 - Commit clay, make sure project compiles in clean repo
 - Use minified clay_function when releasing
