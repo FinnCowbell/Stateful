@@ -153,8 +153,10 @@ void action_window_set_color(ColorAction action) {
         case COLOR_ACTION_VIBRATE_RESPONSE:
             if (s_spinner_timer) { app_timer_cancel(s_spinner_timer); s_spinner_timer = NULL; }
             action_bar_reset_spinner(false);
+            __attribute__((fallthrough));
         case COLOR_ACTION_VIBRATE_INIT:
             SHORT_VIBE();
+            __attribute__((fallthrough));
         case COLOR_ACTION_RESET_ONLY:
             new_color = (s_tap_toggle) ? s_tile->highlight : s_tile->color;
             new_highlight = (s_tap_toggle) ? s_tile->color : s_tile->highlight;
