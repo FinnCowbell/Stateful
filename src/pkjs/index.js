@@ -168,15 +168,21 @@ Pebble.addEventListener('webviewclosed', function(e) {
       // Local edits make the stored revision meaningless, drop it so the next pull re-applies the
       // server copy rather than deciding it is already up to date.
       Sync.clearRevision();
+      // Checked before saving, since saveSettings() is what makes the new values current.
+      var syncMoved = Sync.settingsChanged(response.sync);
+      Sync.saveSettings(response.sync);
+      var parseFailed = false;
       ClayHelper.clayToTiles(tiles, function() {
+        parseFailed = true;
         ClayHelper.openURL(clay, "Failed to parse JSON", ClayAction.JSON_SUBMIT);
       });
-      break;
-    case "SyncNow":
-      Sync.saveSettings(tiles);
-      Sync.pull(true, function(applied, message) {
-        ClayHelper.openURL(clay, message, ClayAction.SYNC);
-      });
+      // Pointing the app at a new endpoint is the one case where the user needs to know straight away
+      // whether it works, so pull immediately rather than leaving them to find out at next launch.
+      if (!parseFailed && syncMoved && Sync.settings().enabled) {
+        Sync.pull(true, function(applied, message) {
+          ClayHelper.openURL(clay, message, ClayAction.JSON_SUBMIT);
+        });
+      }
       break;
   }
 });
