@@ -43,6 +43,10 @@ bool text_color_legible_over_bg(const GColor8 *bg_color, GColor8 *text_color) {
 
 
 static void init() {
+  #ifdef STATEFUL_TOUCH_NAVIGATION
+  app_touch_navigation_enable(true);
+  #endif
+
   // Detect crashes by setting a persistant key on app start and only clearing 
   // once everything else has been deallocated in deinit
   uint8_t crash_count = (uint8_t) persist_read_int(PERSIST_CRASH_COUNT);

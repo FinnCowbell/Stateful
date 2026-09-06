@@ -373,7 +373,28 @@ static void action_window_reset_elements(bool select_icon) {
     action_bar_layer_set_background_color(s_action_bar_layer, toggle_highlight);
 }  
 
+#ifdef STATEFUL_TOUCH_NAVIGATION
+static void swipe_back_callback(const Recognizer *recognizer, RecognizerEvent event) {
+    if (event == RecognizerEvent_Completed &&
+        window_stack_get_top_window() == s_action_window) {
+        window_stack_pop(true);
+    }
+}
+#endif
+
 static void action_window_load(Window *window) {
+    #ifdef STATEFUL_TOUCH_NAVIGATION
+    // Never translate touches on API actions into button presses.
+    window_set_touch_bridge_disabled(window, true);
+    Recognizer *swipe_back = swipe_recognizer_create(swipe_back_callback, NULL,
+                                                    SwipeDirection_Right);
+    if (swipe_back) {
+        window_attach_recognizer(window, swipe_back);
+    } else {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Unable to create swipe-back recognizer");
+    }
+    #endif
+
     GColor8 text_color;
     text_color_legible_over_bg(&(s_tile->color), &text_color);
     bool bg_exceeds_threshold = text_color_legible_over_bg(&(s_tile->highlight), NULL);
