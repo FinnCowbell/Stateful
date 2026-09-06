@@ -3,6 +3,9 @@
 - `origin` is `FinnCowbell/Stateful`; `upstream` is `kennedn/Stateful`.
 - Keep each independent feature or fix on its own branch based on
   `upstream/master`. Continue related changes on the existing feature branch.
+- Split prerequisite repository changes, such as SDK/build setup changes, into
+  their own branches rather than bundling them into the feature that needs them.
+  Document dependencies and test the branches together before integration.
 - Commit changes on the feature branch first, then cherry-pick only the new
   commits onto the fork's `master`. Keep `master` as the linear integration
   branch, without merge commits or duplicate patches.
