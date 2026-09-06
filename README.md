@@ -16,6 +16,18 @@ Each tile has an overflow menu that can be accessed by long pressing the middle 
 Multiple tiles can coexist. There is a menu system which allows navigation between tiles:
 
 ![](markdown_resources/menuing.gif)
+
+## Time 2 touch navigation
+
+With SDK 4.33 or newer and compatible watch firmware, enable touch input in
+the watch settings to scroll and select tiles using the native menu gestures.
+Opening a tile does not send an API request.
+
+Inside a tile, swipe right to return to the menu. Taps, holds, and other swipe
+directions do not trigger actions or switch the overflow controls: API requests
+still require physical button presses. Button navigation remains available.
+Other watches and builds using SDKs without these touch APIs remain button-only.
+
 # Wiki
 
 Head over to the [Wiki](../../wiki) for more information on usage.

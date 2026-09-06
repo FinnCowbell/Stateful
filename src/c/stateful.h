@@ -1,6 +1,12 @@
 #pragma once
 #include <pebble.h>
 
+#if defined(PBL_PLATFORM_EMERY) && PBL_API_EXISTS(app_touch_navigation_enable) \
+    && PBL_API_EXISTS(window_set_touch_bridge_disabled) \
+    && PBL_API_EXISTS(swipe_recognizer_create) && PBL_API_EXISTS(window_attach_recognizer)
+#define STATEFUL_TOUCH_NAVIGATION
+#endif
+
 #define DEBUG 0
 #define debug(level, ...) \
   do { if (level <= DEBUG) APP_LOG(APP_LOG_LEVEL_DEBUG, __VA_ARGS__); } while (0)

@@ -89,14 +89,18 @@ static void open_default(void *data) {
 }
 
 
+static void select_tile_callback(MenuLayer *menu_layer, MenuIndex *index, void *context) {
+  if (tile_array) {
+    action_window_push(tile_array->tiles[index->row], index->row);
+  }
+}
+
 //! Selection button callback, creates a new action window based on current row
 //! @param recognizer The click recognizer that detected a "click" pattern
 //! @param context Pointer to application specified data
 static void select_callback(ClickRecognizerRef ref, void *ctx) {
-  if (tile_array) {
-    uint8_t selected_row = menu_layer_get_selected_index(s_menu_layer).row;
-    action_window_push(tile_array->tiles[selected_row], selected_row);
-  }
+  MenuIndex index = menu_layer_get_selected_index(s_menu_layer);
+  select_tile_callback(s_menu_layer, &index, ctx);
 }
 
 //! Up button callback, Moves up one row in the menu list, wraps around to bottom of list
@@ -143,6 +147,7 @@ static void menu_window_load(Window *window) {
       .draw_row = draw_row_callback,
       .get_cell_height = get_cell_height_callback,
       .selection_changed = selection_changed_callback,
+      .select_click = select_tile_callback,
   });
 
   Layer *menu_layer_root = menu_layer_get_layer(s_menu_layer);
