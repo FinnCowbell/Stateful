@@ -411,6 +411,14 @@ static void action_window_load(Window *window) {
     layer_add_child(window_layer, text_layer_get_layer(s_down_label_layer));
     action_bar_layer_set_click_config_provider(s_action_bar_layer, click_config_provider);
     action_bar_layer_add_to_window(s_action_bar_layer, window);
+
+    #ifdef PBL_PLATFORM_EMERY
+    // Spread the native bar's outer icons to match the label centers on Time 2.
+    Layer *action_bar_layer = action_bar_layer_get_layer(s_action_bar_layer);
+    GRect action_bar_frame = layer_get_frame(action_bar_layer);
+    layer_set_frame(action_bar_layer, grect_inset(action_bar_frame,
+                    ((GEdgeInsets) {.top = -11, .bottom = -11})));
+    #endif
 }
 
 
